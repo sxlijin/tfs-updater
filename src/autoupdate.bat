@@ -1,1 +1,1 @@
-bin\update.py --auto >> update_log.txt
+src\update.py >> update_log.txt
