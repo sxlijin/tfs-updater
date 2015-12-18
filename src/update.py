@@ -11,16 +11,19 @@
 ##
 ##   TFS HISCORES UPDATER is distributed in the hope that it will be useful,
 ##   but WITHOUT ANY WARRANTY; without even the implied warranty of 
-##   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General 
+##   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.   See the GNU General 
 ##   Public License for more details.
 ##
 ##   You should have received a copy of the GNU General Public License
 ##   along with TFS HISCORES UPDATER. If not, see http://www.gnu.org/licenses/.
 
 
+
 ## CHANGE THIS LINE IF THE GDOC FOR THE HISCORES IS CHANGED
 gdoc_url_key = '0Arkz2dsnDdvVdG1DLWU4NDNwSndoS0FCb1hIekw1a2c'
 ## CHANGE THIS LINE IF THE GDOC FOR THE HISCORES IS CHANGED
+
+
 
 runtime = 'yyyy-mm-dd-hh-mm-ss'
 rsn_list = []
@@ -29,118 +32,173 @@ rsn_dict = {}
 import csv, locale, time, shutil, requests
 ## csv used to generate the .csv
 ## locale used by dformat()
-## 
 
 
-## set_runtime(): none -> none
-## Sets the $runtime global to the time that set_runtime() is called.
 def set_runtime():
-  global runtime ## Must include global declaration to modify it
-  runtime = '-'.join([str(elem).zfill(2) for elem in time.gmtime()[:6]])
+    """
+    Generate string representing the current GMT time, yyyy-mm-dd-hh-mm-ss.
+    Writes said string to the $runtime global and returns it.
+    """
+    global runtime
+    runtime = '-'.join([str(elem).zfill(2) for elem in time.gmtime()[:6]])
+    return runtime
 
-## request_memberlist(): none -> none
-## Requests db-memberlist and reads its contents into the $rsn_list global
+
 def request_memberlist():
-  print 'entering read_memberlist():'
-  gdoc_url_base  = 'https://docs.google.com/spreadsheet/pub?output=csv&key='
-  gdoc_url = gdoc_url_base + gdoc_url_key + '&output=csv#gid=62'
-  gdoc_response = requests.get(gdoc_url)
-  gdoc_contents = gdoc_response.content
-  global rsn_list ## Must include global declaration to modify it
-  rsn_list = gdoc_contents.split('\n') ## CSV has been read in as a string
-  while '' in rsn_list:  rsn_list.remove('') ## Remove all blank entries
-  ## The first entry should always be blank because the GDoc needs a blank header
-  ## to sort (alphabetize) the memberlist.
+    """
+    Requests the list of TFS members to update hiscores for, specifically from 
+    the Google Sheet "TFS Hiscores - Data/db-memberlist".
 
-## request_hiscores_for(rsn): String -> none
-## Downloads the lite hiscores for $rsn, calls the parser, writes it to the $rsn_dict global.
+    Parses list into $rsn_list global and returns it.
+    """
+    print 'entering read_memberlist():'
+    gdoc_url_base   = 'https://docs.google.com/spreadsheet/pub?output=csv&key='
+    gdoc_url = gdoc_url_base + gdoc_url_key + '&output=csv#gid=62'
+    gdoc_response = requests.get(gdoc_url)
+    gdoc_contents = gdoc_response.content
+
+    global rsn_list ## Must include global declaration to modify it
+    rsn_list = [rsn for rsn in gdoc_contents.splitlines() if len(rsn) > 0]
+    ## Ignore blank entries; we know there is at least one because the first
+    ## entry should always be blank because the GDoc needs a blank header to
+    ## to sort (alphabetize) the memberlist.
+
+    return rsn_list
+
+
 def request_hiscores_for(rsn):
-  print '  Requesting hiscores for '+rsn+' using request_hiscores_for()'
-  hs_url_base = 'http://hiscore.runescape.com/index_lite.ws?player=' ## ??? ADD THIS
-  hs_url_key = rsn
-  hs_url = hs_url_base + hs_url_key
-  
-  global rsn_dict
-  requested_hiscores_for = requests.get(hs_url)
-  if '404 - Page not found' not in requested_hiscores_for.content:
-    rsn_dict[rsn] = parse_received_content(requested_hiscores_for.content)
-  else:
-    print '    Excluding '+rsn+': 404 error returned upon requesting hiscores'
+    """
+    Downloads the lite hiscores for $rsn, calls the parser on the data, and
+    finishes by writing to the $rsn_dict global.
+    """
+    print ' Requesting hiscores for %s using request_hiscores_for()' % rsn
+    hs_url = 'http://hiscore.runescape.com/index_lite.ws?player=%s' % rsn
+    requested_data = requests.get(hs_url)
+    
+    ## if data request was successful
+    if requested_data.status_code == 200:
+        global rsn_dict
+        rsn_dict[rsn] = parse_received_content(requested_data.content)
+    
+    ## otherwise report failure and the received response code
+    else:
+        f = (rsn, requested_data.status_code)
+        print '     Excluding %s: %d (not 200) response code on hs request' % f
 
 
-## parse_received_content(received_content): String -> none
-## Chews up the lite hiscores and spits out the appropriate format for the TFS hiscores.
 def parse_received_content(received_content):
-  hiscores_array = [item.split(',')[1:] for item in received_content.split('\n')]
-  f2p_hiscores_array = hiscores_array[1:10]+hiscores_array[11:][:5]+hiscores_array[21:][:1]+hiscores_array[25:][:1]+hiscores_array[39:][:1]
-  a = f2p_hiscores_array
-  ordered = a[0]+a[2]+a[1]+a[3]+a[4]+a[6]+a[5]+a[14]+a[11]+a[13]+a[12]+a[8]+a[10]+a[9]+a[7]+a[15]+a[16]
-  ordered_f2p_hiscores_array = [dformat(item) if item != '-1' else '0' for item in ordered] 
-  if ordered_f2p_hiscores_array[6] == '1':  ordered_f2p_hiscores_array[6:8]=['10','1,154']
-  return ordered_f2p_hiscores_array
+    """
+    Returns a list containing the data appropriately ordered for the GSheet.
+
+    Parses the <requests>.content received from a successful hiscore request,
+    which will look something like the example below.
+
+        '465511,1535,183078301\n393375,80,2180227\n297382,86,3606468\n303931,
+        90,5479557\n190674,99,13880142\n93868,99,15982524\n400308,66,503772\n
+        73304,99,17998984\n197868,96,9703486\n242848,89,5206653\n-1,1,-1\n
+        106229,99,13049112\n72673,99,13967245\n77291,99,13034450\n78483,99,
+        13038635\n106483,92,6951638\n-1,1,-1\n-1,1,-1\n-1,1,-1\n-1,1,-1\n-1,1,
+        -1\n141871,82,2504444\n-1,1,-1\n-1,1,-1\n-1,1,-1\n37265,111,45987084\n
+        -1,1,-1\n-1,-1\n-1,-1\n-1,-1\n-1,-1\n-1,-1\n-1,-1\n-1,-1\n-1,-1\n-1,
+        -1\n-1,-1\n-1,-1\n-1,-1\n650,24824\n50365,280\n-1,-1\n-1,-1\n-1,-1\n
+        -1,-1\n-1,-1\n-1,-1\n-1,-1\n48936,44\n-1,-1\n-1,-1\n'
+
+    Format is the following repeated: '<rank>,<level>,<experience>\n'
+    """
+    # discard ranks from the data, split into one list per hiscore (eg lv, xp)
+    hiscores_array = [  item.split(',')[1:] 
+                        for item in received_content.split('\n')]
+
+    # isolate relevant f2p hiscores
+    f2p_hiscores_array = ( hiscores_array[1:10]
+                            + hiscores_array[11:][:5]
+                            + hiscores_array[21:][:1]
+                            + hiscores_array[25:][:1]
+                            + hiscores_array[39:][:1] )
+    
+    # reorder entries as appropriate
+    ordered = [0, 2, 1, 3, 4, 6, 5, 14, 11, 13, 12, 8, 10, 9, 7, 15, 16]
+    ordered = [f2p_hiscores_array[i] for i in ordered]
+
+    # concatenate 
+    ordered = [dformat(item) if item != '-1' else '0' for item in sum(ordered, [])] 
+
+    # if constitution not high enough to appear on hs, set to 10
+    if ordered[6] == '1':    ordered[6:8]=['10','1,154']
+    return ordered
 
 
-## wget_all(): none -> none
-## Calls request_hiscores_for() for every name in the $rsn_list global
 def request_all_hiscores():
-  try: 
-    for rsn in rsn_list:  request_hiscores_for(rsn)
-  except requests.exceptions.RequestException as e:
-    print 'sth spontaneously combusted, but i have no idea what; all i know is:'
-    print e
+    """
+    Calls request_hiscores_for() for every name in the $rsn_list global
+    """
+    try: 
+        for rsn in rsn_list:    request_hiscores_for(rsn)
+    except requests.exceptions.RequestException as e:
+        print 'sth spontaneously combusted, but i have no idea what; all i know is:'
+        print e
 
 
 ## writecsv(dict, .csv): dict, String -> None
 ## Writes contents of $hashtable to $out_csv as a .csv file.
 def write_csv(hashtable, out_csv):
-  update_writer = csv.writer(open(out_csv,'w'), delimiter=',', lineterminator='\n', quotechar ='"')
-  ## Initializes the csv.writer(); cannot use dialect='excel'
-  ## because running in Windows then automatically sets lineterminator to '\r\n'
-  for key in hashtable : update_writer.writerow([runtime, key, ''] + hashtable[key])
-  ## In the old version, the update form automatically timestamped each update request
-  ## and the script would include these timestamps in the final version so that people
-  ## would be able to see when they had last updated their stats; the third column was
-  ## also left blank for unknown reasons (a placeholder perhaps? - or maybe there was
-  ## functionality intended for it). As a result, the db-main (which contains all the
-  ## raw data) is formatted like so:
-  ## <time of update> <RSN> <blank> <hiscores[0]> <hiscores[1]> ...
+    update_writer = csv.writer( open(out_csv,'w'), 
+                                delimiter=',', 
+                                lineterminator='\n', 
+                                quotechar ='"' )
+    ## Initializes the csv.writer(); cannot use dialect='excel'
+    ## because running in Windows then automatically sets lineterminator to '\r\n'
+    for key in hashtable : 
+        row = [runtime, key, ''] + hashtable[key]
+        print row
+        update_writer.writerow(row)
+
+    ## In the old version, the update form automatically timestamped each update request
+    ## and the script would include these timestamps in the final version so that people
+    ## would be able to see when they had last updated their stats; the third column was
+    ## also left blank for unknown reasons (a placeholder perhaps? - or maybe there was
+    ## functionality intended for it). As a result, the db-main (which contains all the
+    ## raw data) is formatted like so:
+    ## <time of update> <RSN> <blank> <hiscores[0]> <hiscores[1]> ...
 
 
 ## dform(numstring) -> string
 ## Formats a numerical string per American decimal notation; that is, commas mark off every 10^3.
 def dformat(num):
-  locale.setlocale(locale.LC_ALL,'')
-  return locale.format('%d', int(num), True)
+    locale.setlocale(locale.LC_ALL,'')
+    return locale.format('%d', int(num), True)
 
 
 ## archive() -> None
 ## Logs updated-hiscores.csv in csv_archive/ for future reference.
 def archive():
-  try :
-    shutil.copy('updated-hiscores.csv','csv_archive/hiscores_{timestamp}.csv'.format(timestamp=runtime))
-  except IOError as error: 'IOError: could not archive {f} (action:cp)'.format(f=error.filename)
+    try :
+        shutil.copy('updated-hiscores.csv','csv_archive/hiscores_{timestamp}.csv'.format(timestamp=runtime))
+    except IOError as error: 
+        print 'IOError: could not archive %s (action:cp)' % error.filename
  
 
 ## auto_update(): none -> none
 ## Calls everything in order.
 def auto_update():
-  print 'Initializing auto_update()'
-  set_runtime()
-  print 'Setting runtime to: '+runtime
-  print 'Calling request_memberlist() from auto_update()'
-  request_memberlist()
-  print 'Calling request_all_hiscores() from auto_update()'
-  request_all_hiscores() ## Download everything
-  print 'Calling write_csv() from auto_update()'
-  write_csv(rsn_dict,'updated-hiscores.csv')
-  print 'Calling archive() from auto_update()'
-  archive()
-  print 'Exiting auto_update()'
+    print 'Initializing auto_update()'
 
-def main():
-  auto_update()
-  print 'main() has finished executing - exiting now.'
+    print 'Setting runtime to: %s' % set_runtime()
+    print 'Calling request_memberlist() from auto_update()'
+    request_memberlist()
+
+    print 'Calling request_all_hiscores() from auto_update()'
+    request_all_hiscores() ## Download everything
+
+    print 'Calling write_csv() from auto_update()'
+    write_csv(rsn_dict,'updated-hiscores.csv')
+
+    print 'Calling archive() from auto_update()'
+    archive()
+
+    print 'Exiting auto_update()'
 
 
-if __name__ == '__main__': main()
-
+if __name__ == '__main__':
+    auto_update()
+    print 'main() has finished executing - exiting now.'
