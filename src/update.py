@@ -125,6 +125,7 @@ def parse_hs_data(received_data):
         -1\n-1,-1\n-1,-1\n-1,-1\n-1,-1\n51277,44\n-1,-1\n-1,-1'
 
     Info from http://services.runescape.com/m=rswiki/en/Hiscores_APIs
+    Note: page was not edited after release of Invention, so it doesn't list it
 
     Format is the following repeated: '<rank>,<level>,<experience> '
     """
@@ -135,7 +136,7 @@ def parse_hs_data(received_data):
                         'Smithing', 'Mining', 'Herblore', 'Agility', 'Thieving', 
                         'Slayer', 'Farming', 'Runecrafting', 'Hunter', 
                         'Construction', 'Summoning', 'Dungeoneering', 
-                        'Divination'] + 
+                        'Divination', 'Invention'] + 
                        ['Bounty Hunter', 'B.H. Rogues', 'Dominion Tower', 
                         'The Crucible', 'Castle Wars games', 'B.A. Attackers', 
                         'B.A. Defenders', 'B.A. Collectors', 'B.A. Healers', 
@@ -150,10 +151,10 @@ def parse_hs_data(received_data):
                         'AF15: Rats killed after the miniquest.'])
 
     # isolate relevant f2p hiscores, discarding ranks from the data
-    f2p_hiscores_array = {  datum_type:datum.split(',')[1:] 
-                            for datum, datum_type
-                            in zip(received_data.split(), received_order)
-                            }
+    hiscores_array = {  datum_type:datum.split(',')[1:] 
+                        for datum, datum_type
+                        in zip(received_data.split(), received_order)
+                        }
 
     
     # reorder entries as appropriate
@@ -162,7 +163,7 @@ def parse_hs_data(received_data):
                 'Smithing', 'Woodcutting', 'Firemaking', 'Fishing', 'Cooking',
                 'Dungeoneering', 'Fist of Guthix'
                 ]
-    ordered = [f2p_hiscores_array[i] for i in ordered]
+    ordered = [hiscores_array[i] for i in ordered]
 
     # concatenate 
     ordered = [dformat(item) if item != '-1' else '0' for item in sum(ordered, [])] 
