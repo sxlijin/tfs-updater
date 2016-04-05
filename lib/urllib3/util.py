@@ -32,7 +32,7 @@ try:  # Test for SSL features
 except ImportError:
     pass
 
-import six
+import lib.six as six
 from .exceptions import LocationParseError, SSLError, TimeoutStateError
 
 

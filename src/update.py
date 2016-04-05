@@ -30,7 +30,8 @@ f_out_log = ''
 rsn_list = []
 rsn_dict = {}
 
-import csv, locale, time, shutil, requests
+import csv, locale, time, shutil
+import lib.requests as requests
 ## csv used to generate the .csv
 ## locale used by dformat()
 

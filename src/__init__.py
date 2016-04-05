@@ -1,1 +1,2 @@
-__all__ = ['update', 'chardet', 'requests', 'six', 'urllib3']
+__all__ = ['update']
+import update

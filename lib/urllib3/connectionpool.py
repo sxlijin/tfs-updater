@@ -55,7 +55,7 @@ from .exceptions import (
     ProxyError,
 )
 from .packages.ssl_match_hostname import CertificateError, match_hostname
-import six
+import lib.six as six
 from .request import RequestMethods
 from .response import HTTPResponse
 from .util import (

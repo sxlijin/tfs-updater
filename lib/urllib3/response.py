@@ -10,7 +10,7 @@ import zlib
 import io
 
 from .exceptions import DecodeError
-from six import string_types as basestring, binary_type
+from lib.six import string_types as basestring, binary_type
 from .util import is_fp_closed
 
 

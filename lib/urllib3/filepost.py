@@ -10,8 +10,8 @@ import mimetypes
 from uuid import uuid4
 from io import BytesIO
 
-import six
-from six import b
+import lib.six as six
+from lib.six import b
 from .fields import RequestField
 
 writer = codecs.lookup('utf-8')[3]

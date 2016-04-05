@@ -7,7 +7,7 @@
 import email.utils
 import mimetypes
 
-import six
+import lib.six as six
 
 
 def guess_content_type(filename, default='application/octet-stream'):

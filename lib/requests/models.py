@@ -17,10 +17,10 @@ from .structures import CaseInsensitiveDict
 
 from .auth import HTTPBasicAuth
 from .cookies import cookiejar_from_dict, get_cookie_header
-from urllib3.fields import RequestField
-from urllib3.filepost import encode_multipart_formdata
-from urllib3.util import parse_url
-from urllib3.exceptions import DecodeError
+from lib.urllib3.fields import RequestField
+from lib.urllib3.filepost import encode_multipart_formdata
+from lib.urllib3.util import parse_url
+from lib.urllib3.exceptions import DecodeError
 from .exceptions import (
     HTTPError, RequestException, MissingSchema, InvalidURL,
     ChunkedEncodingError, ContentDecodingError)

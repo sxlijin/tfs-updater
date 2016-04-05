@@ -40,6 +40,22 @@ hiscores, reads it all into hashtables, then generates a CSV to upload to
 GDocs.
 
 ##### Update log
+2016-04-05:v2.2 Refactored to include all dependencies. Should be able to run
+        independently of any and all library dependencies, barring the standard
+        Python 2.7.x distribution.
+            Bug fixes made along the way also apparently never actually worked
+        correctly. That's completely on me for not testing after commit/push. 
+            Independency required some refactoring to make stuff work; what 
+        happened was that by moving all dependencies in, a lot of the import
+        statements in the dependencies themselves no longer worked, because
+        they were attempting to do a global import, instead of a submodule
+        import - which is where the dependency had been placed. The following
+        sed statement was required to repair these dependencies:
+            sed -i "s/^import six$/import lib.six as six/;
+                    s/^from six/from lib.six/;
+                    s/^import chardet$/import lib.chardet as chardet/;
+                    s/^from urllib3/from lib.urllib3/
+                    " lib/*/*.py
 2014-09-01:v2.1 Reorganized file structure.
 2014-06-05:v2.0	Completely rewrote everything following Jagex's decision to 
 		return hiscores to the F2P community. New version completely 

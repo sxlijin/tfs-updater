@@ -23,26 +23,16 @@ gdoc_url_key = '0Arkz2dsnDdvVdG1DLWU4NDNwSndoS0FCb1hIekw1a2c'
 
 
 
-import src.update
-##import subprocess
-#from time import sleep
-#from sys import platform
-#
-#exe = './src/autoupdate.sh' ## Default
-#if platform == 'win32': exe = r'src\autoupdate.bat'
-#elif platform in ('linux2','darwin'): exe = './src/autoupdate.sh'
-#else:
-#  print 'Your operating system was not recognized. Defaulting to autoupdate.sh.'
-#  print 'Please run update.py (in src) to update the hiscores instead.'
+##  Do NOT modify anything below this line. It will have disastrous consequences.
+import lib, src
+import time
 
 print 'Please wait... calling the updater.'
 print 'The update log will be recorded in the most recent file in log/.'
 
-sleep(5) #Give user time to read this.
+time.sleep(5) #Give user time to read this.
 
 src.update.auto_update()
 
 raw_input("Finished generating updated-hiscores.csv. Press any key to finish.")
 sys.exit(0)
-
-#subprocess.call(exe)
