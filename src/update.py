@@ -128,14 +128,15 @@ def parse_hs_data(received_data):
 
     Format is the following repeated: '<rank>,<level>,<experience> '
     """
-    received_order = ([ 'Attack', 'Defence', 'Strength', 'Constitution', 
+    received_order = ( ['Total level'] + 
+                       ['Attack', 'Defence', 'Strength', 'Constitution', 
                         'Ranged', 'Prayer', 'Magic', 'Cooking', 'Woodcutting', 
                         'Fletching', 'Fishing', 'Firemaking', 'Crafting', 
                         'Smithing', 'Mining', 'Herblore', 'Agility', 'Thieving', 
                         'Slayer', 'Farming', 'Runecrafting', 'Hunter', 
                         'Construction', 'Summoning', 'Dungeoneering', 
                         'Divination'] + 
-                     [  'Bounty Hunter', 'B.H. Rogues', 'Dominion Tower', 
+                       ['Bounty Hunter', 'B.H. Rogues', 'Dominion Tower', 
                         'The Crucible', 'Castle Wars games', 'B.A. Attackers', 
                         'B.A. Defenders', 'B.A. Collectors', 'B.A. Healers', 
                         'Duel Tournament', 'Mobilising Armies', 'Conquest', 
