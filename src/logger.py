@@ -17,7 +17,9 @@
 ##   You should have received a copy of the GNU General Public License
 ##   along with TFS HISCORES UPDATER. If not, see http://www.gnu.org/licenses/.
 
-import time, inspect
+import time, inspect, os
+
+LOG_DIRECTORY = 'log/'
 
 class Log:
     """
@@ -27,8 +29,12 @@ class Log:
     def __init__(self):
         """Initialize logger object."""
         self.runtime = get_current_time()
-        self.log_fname = 'log/update-log_{timestamp}.log'.format(
-                            timestamp=self.runtime)
+        if not os.path.exists(LOG_DIRECTORY): os.mkdir(LOG_DIRECTORY)
+        self.log_fname = os.path.join(
+                            LOG_DIRECTORY,
+                            'update-log_{timestamp}.log'.format(
+                                timestamp=self.runtime)
+                            )
         open(self.log_fname, 'w').close()
         self.log('Runtime set to %s' % self.runtime)
         self.log('Setting log file to %s' % self.log_fname)
