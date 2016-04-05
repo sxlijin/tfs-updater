@@ -25,14 +25,26 @@ gdoc_url_key = '0Arkz2dsnDdvVdG1DLWU4NDNwSndoS0FCb1hIekw1a2c'
 
 ##  Do NOT modify anything below this line. It will have disastrous consequences.
 import lib, src
-import time, sys
+import sys
 
 print 'Please wait... calling the updater.'
 print 'The update log will be recorded in the most recent file in log/.'
 
-time.sleep(5) #Give user time to read this.
-
-src.update.auto_update(gdoc_url_key)
+try:
+    src.update.auto_update(gdoc_url_key)
+except Exception as e:
+    print
+    print 'FATAL ERROR DEFCON 5 something something very cryptic'
+    print 'Seriously though, something went really, really wrong'
+    print 'if you\'re seeing this error message. Aging will want'
+    print 'to know what the actual error is; here it is:'
+    open('FATAL-ERROR-REPORT.log', 'w').write(repr(e))
+    print
+    print e
+    print
+    print 'Nothing to do but give up, I suppose...'
+    raw_input('Press any key to exit.')
+    sys.exit(1)
 
 raw_input("Finished generating updated-hiscores.csv. Press any key to finish.")
 sys.exit(0)
