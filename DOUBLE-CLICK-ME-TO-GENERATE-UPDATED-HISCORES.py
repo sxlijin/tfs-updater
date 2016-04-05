@@ -25,7 +25,7 @@ gdoc_url_key = '0Arkz2dsnDdvVdG1DLWU4NDNwSndoS0FCb1hIekw1a2c'
 
 ##  Do NOT modify anything below this line. It will have disastrous consequences.
 import lib, src
-import sys
+import sys, traceback
 
 print 'Please wait... calling the updater.'
 print 'The update log will be recorded in the most recent file in log/.'
@@ -38,9 +38,14 @@ except Exception as e:
     print 'Seriously though, something went really, really wrong'
     print 'if you\'re seeing this error message. Aging will want'
     print 'to know what the actual error is; here it is:'
-    open('FATAL-ERROR-REPORT.log', 'w').write(repr(e))
+
+    e_trace = traceback.format_exc(sys.exc_info())
+    open('FATAL-ERROR-REPORT.log', 'w').write(repr(e)+'\n')
+    open('FATAL-ERROR-REPORT.log', 'a').write(e_trace+'\n')
+
     print
     print e
+    print e_trace
     print
     print 'Nothing to do but give up, I suppose...'
     raw_input('Press any key to exit.')

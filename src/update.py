@@ -107,38 +107,60 @@ def request_hiscores_for(rsn):
         log('    Excluding %s: %d response code on hiscore retrieval' % f)
 
 
-def parse_hs_data(received_content):
+def parse_hs_data(received_data):
     """
     Returns a list containing the data appropriately ordered for the GSheet.
 
     Parses the <requests>.content received from a successful hiscore request,
     which will look something like the example below.
 
-        '465511,1535,183078301\n393375,80,2180227\n297382,86,3606468\n303931,
-        90,5479557\n190674,99,13880142\n93868,99,15982524\n400308,66,503772\n
-        73304,99,17998984\n197868,96,9703486\n242848,89,5206653\n-1,1,-1\n
-        106229,99,13049112\n72673,99,13967245\n77291,99,13034450\n78483,99,
-        13038635\n106483,92,6951638\n-1,1,-1\n-1,1,-1\n-1,1,-1\n-1,1,-1\n-1,1,
-        -1\n141871,82,2504444\n-1,1,-1\n-1,1,-1\n-1,1,-1\n37265,111,45987084\n
-        -1,1,-1\n-1,-1\n-1,-1\n-1,-1\n-1,-1\n-1,-1\n-1,-1\n-1,-1\n-1,-1\n-1,
-        -1\n-1,-1\n-1,-1\n-1,-1\n650,24824\n50365,280\n-1,-1\n-1,-1\n-1,-1\n
-        -1,-1\n-1,-1\n-1,-1\n-1,-1\n48936,44\n-1,-1\n-1,-1\n'
+        '477834,1536,183222987\n402950,80,2181102\n306123,86,3613689\n
+        311318,90,5487764\n197949,99,13892341\n99545,99,16003196\n408384,66,
+        525159\n79445,99,18005632\n202257,96,9708671\n247276,89,5234718\n-1,1,
+        -1\n111310,99,13054112\n76514,99,13967725\n82595,99,13035060\n86307,99,
+        13039131\n112240,92,6951868\n-1,1,-1\n-1,1,-1\n-1,1,-1\n-1,1,-1\n-1,1,
+        -1\n146607,82,2504944\n-1,1,-1\n-1,1,-1\n-1,1,-1\n39137,111,46013995\n
+        -1,1,-1\n-1,0,-1\n-1,-1\n-1,-1\n-1,-1\n-1,-1\n-1,-1\n-1,-1\n-1,-1\n-1,
+        -1\n-1,-1\n-1,-1\n-1,-1\n-1,-1\n647,24824\n49449,280\n-1,-1\n-1,-1\n-1,
+        -1\n-1,-1\n-1,-1\n-1,-1\n-1,-1\n51277,44\n-1,-1\n-1,-1'
 
-    Format is the following repeated: '<rank>,<level>,<experience>\n'
+    Info from http://services.runescape.com/m=rswiki/en/Hiscores_APIs
+
+    Format is the following repeated: '<rank>,<level>,<experience> '
     """
-    # discard ranks from the data, split into one list per hiscore (eg lv, xp)
-    hiscores_array = [  item.split(',')[1:] 
-                        for item in received_content.split('\n')]
+    received_order = ([ 'Attack', 'Defence', 'Strength', 'Constitution', 
+                        'Ranged', 'Prayer', 'Magic', 'Cooking', 'Woodcutting', 
+                        'Fletching', 'Fishing', 'Firemaking', 'Crafting', 
+                        'Smithing', 'Mining', 'Herblore', 'Agility', 'Thieving', 
+                        'Slayer', 'Farming', 'Runecrafting', 'Hunter', 
+                        'Construction', 'Summoning', 'Dungeoneering', 
+                        'Divination'] + 
+                     [  'Bounty Hunter', 'B.H. Rogues', 'Dominion Tower', 
+                        'The Crucible', 'Castle Wars games', 'B.A. Attackers', 
+                        'B.A. Defenders', 'B.A. Collectors', 'B.A. Healers', 
+                        'Duel Tournament', 'Mobilising Armies', 'Conquest', 
+                        'Fist of Guthix', 'GG: Athletics', 'GG: Resource Race', 
+                        'WE2: Armadyl lifetime contribution', 
+                        'WE2: Bandos lifetime contribution', 
+                        'WE2: Armadyl PvP kills', 'WE2: Bandos PvP kills', 
+                        'Robbers caught during Heist', 
+                        'loot stolen during Heist', 'CFP: 5 game average', 
+                        'AF15: Cow Tipping',
+                        'AF15: Rats killed after the miniquest.'])
 
-    # isolate relevant f2p hiscores
-    f2p_hiscores_array = ( hiscores_array[1:10]
-                            + hiscores_array[11:][:5]
-                            + hiscores_array[21:][:1]
-                            + hiscores_array[25:][:1]
-                            + hiscores_array[39:][:1] )
+    # isolate relevant f2p hiscores, discarding ranks from the data
+    f2p_hiscores_array = {  datum_type:datum.split(',')[1:] 
+                            for datum, datum_type
+                            in zip(received_data.split(), received_order)
+                            }
+
     
     # reorder entries as appropriate
-    ordered = [0, 2, 1, 3, 4, 6, 5, 14, 11, 13, 12, 8, 10, 9, 7, 15, 16]
+    ordered = [ 'Attack', 'Strength', 'Defence', 'Constitution', 'Ranged',
+                'Magic', 'Prayer', 'Runecrafting', 'Crafting', 'Mining',
+                'Smithing', 'Woodcutting', 'Firemaking', 'Fishing', 'Cooking',
+                'Dungeoneering', 'Fist of Guthix'
+                ]
     ordered = [f2p_hiscores_array[i] for i in ordered]
 
     # concatenate 
@@ -196,7 +218,7 @@ def dformat(num):
 def archive():
     try :
         shutil.copy(CSV_OUT,
-                    'log/updated-hiscores_{timestamp}.csv'.format(
+                    'log/hiscores_{timestamp}.csv'.format(
                         timestamp=runtime)
                     )
     except IOError as error: 
