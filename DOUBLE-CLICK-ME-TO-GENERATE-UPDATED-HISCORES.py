@@ -25,7 +25,7 @@ gdoc_url_key = '0Arkz2dsnDdvVdG1DLWU4NDNwSndoS0FCb1hIekw1a2c'
 
 ##  Do NOT modify anything below this line. It will have disastrous consequences.
 import lib, src
-import time
+import time, sys
 
 print 'Please wait... calling the updater.'
 print 'The update log will be recorded in the most recent file in log/.'
