@@ -26,6 +26,7 @@ gdoc_url_key = '0Arkz2dsnDdvVdG1DLWU4NDNwSndoS0FCb1hIekw1a2c'
 
 
 runtime = 'yyyy-mm-dd-hh-mm-ss'
+f_out_log = ''
 rsn_list = []
 rsn_dict = {}
 
@@ -34,24 +35,45 @@ import csv, locale, time, shutil, requests
 ## locale used by dformat()
 
 
+class Log:
+    """
+    Generates a timestamped log file in log/ and writes to it.
+    """
+
+    def __init__(self):
+        if runtime == 'yyyy-mm-dd-hh-mm-ss': 
+            set_runtime()
+
+        self.log_fname = open('log/update-log-%s.log' % runtime, 'w')
+
+    def write(self, text):
+        self.log_fname.write(unicode(text))
+        self.log_fname.write(u'\n')
+
+    def close(self):
+        self.log_fname.close()
+
+
 def set_runtime():
     """
     Generate string representing the current GMT time, yyyy-mm-dd-hh-mm-ss.
     Writes said string to the $runtime global and returns it.
     """
     global runtime
+    if runtime != 'yyyy-mm-dd-hh-mm-ss': return runtime
     runtime = '-'.join([str(elem).zfill(2) for elem in time.gmtime()[:6]])
     return runtime
 
 
-def request_memberlist():
+
+def request_memberlist(logger):
     """
     Requests the list of TFS members to update hiscores for, specifically from 
     the Google Sheet "TFS Hiscores - Data/db-memberlist".
 
     Parses list into $rsn_list global and returns it.
     """
-    print 'entering read_memberlist():'
+    logger.write('entering read_memberlist():')
     gdoc_url_base   = 'https://docs.google.com/spreadsheet/pub?output=csv&key='
     gdoc_url = gdoc_url_base + gdoc_url_key + '&output=csv#gid=62'
     gdoc_response = requests.get(gdoc_url)
@@ -66,27 +88,27 @@ def request_memberlist():
     return rsn_list
 
 
-def request_hiscores_for(rsn):
+def request_hiscores_for(logger, rsn):
     """
     Downloads the lite hiscores for $rsn, calls the parser on the data, and
     finishes by writing to the $rsn_dict global.
     """
-    print ' Requesting hiscores for %s using request_hiscores_for()' % rsn
+    logger.write(' Requesting hiscores for %s using request_hiscores_for()' % rsn)
     hs_url = 'http://hiscore.runescape.com/index_lite.ws?player=%s' % rsn
     requested_data = requests.get(hs_url)
     
     ## if data request was successful
     if requested_data.status_code == 200:
         global rsn_dict
-        rsn_dict[rsn] = parse_received_content(requested_data.content)
+        rsn_dict[rsn] = parse_received_content(logger, requested_data.content)
     
     ## otherwise report failure and the received response code
     else:
         f = (rsn, requested_data.status_code)
-        print '     Excluding %s: %d (not 200) response code on hs request' % f
+        logger.write('     Excluding %s: %d response code on hs request' % f)
 
 
-def parse_received_content(received_content):
+def parse_received_content(logger, received_content):
     """
     Returns a list containing the data appropriately ordered for the GSheet.
 
@@ -128,20 +150,20 @@ def parse_received_content(received_content):
     return ordered
 
 
-def request_all_hiscores():
+def request_all_hiscores(logger):
     """
     Calls request_hiscores_for() for every name in the $rsn_list global
     """
     try: 
-        for rsn in rsn_list:    request_hiscores_for(rsn)
+        for rsn in rsn_list:    request_hiscores_for(logger, rsn)
     except requests.exceptions.RequestException as e:
-        print 'sth spontaneously combusted, but i have no idea what; all i know is:'
-        print e
+        logger.write('sth spontaneously combusted, but i have no idea what; all i know is:')
+        logger.write(e)
 
 
 ## writecsv(dict, .csv): dict, String -> None
 ## Writes contents of $hashtable to $out_csv as a .csv file.
-def write_csv(hashtable, out_csv):
+def write_csv(logger, hashtable, out_csv):
     update_writer = csv.writer( open(out_csv,'w'), 
                                 delimiter=',', 
                                 lineterminator='\n', 
@@ -150,7 +172,7 @@ def write_csv(hashtable, out_csv):
     ## because running in Windows then automatically sets lineterminator to '\r\n'
     for key in hashtable : 
         row = [runtime, key, ''] + hashtable[key]
-        print row
+        logger.write(row)
         update_writer.writerow(row)
 
     ## In the old version, the update form automatically timestamped each update request
@@ -171,34 +193,37 @@ def dformat(num):
 
 ## archive() -> None
 ## Logs updated-hiscores.csv in csv_archive/ for future reference.
-def archive():
+def archive(logger):
     try :
         shutil.copy('updated-hiscores.csv','csv_archive/hiscores_{timestamp}.csv'.format(timestamp=runtime))
     except IOError as error: 
-        print 'IOError: could not archive %s (action:cp)' % error.filename
+        logger.write('IOError: could not archive %s (action:cp)' % error.filename)
  
 
 ## auto_update(): none -> none
 ## Calls everything in order.
 def auto_update():
-    print 'Initializing auto_update()'
+    logger = Log()
 
-    print 'Setting runtime to: %s' % set_runtime()
-    print 'Calling request_memberlist() from auto_update()'
-    request_memberlist()
+    logger.write('Initializing auto_update()')
 
-    print 'Calling request_all_hiscores() from auto_update()'
-    request_all_hiscores() ## Download everything
+    logger.write('Setting runtime to: %s' % set_runtime())
+    logger.write('Calling request_memberlist() from auto_update()')
+    request_memberlist(logger)
 
-    print 'Calling write_csv() from auto_update()'
-    write_csv(rsn_dict,'updated-hiscores.csv')
+    logger.write('Calling request_all_hiscores() from auto_update()')
+    request_all_hiscores(logger) ## Download everything
 
-    print 'Calling archive() from auto_update()'
-    archive()
+    logger.write('Calling write_csv() from auto_update()')
+    write_csv(logger, rsn_dict, 'updated-hiscores.csv')
 
-    print 'Exiting auto_update()'
+    logger.write('Calling archive() from auto_update()')
+    archive(logger)
+
+    logger.write('Exiting auto_update()')
 
 
 if __name__ == '__main__':
     auto_update()
-    print 'main() has finished executing - exiting now.'
+    # main() has finished executing - exiting now.
+    sys.exit(0)

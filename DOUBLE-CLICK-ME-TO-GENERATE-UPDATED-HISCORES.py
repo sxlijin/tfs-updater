@@ -27,8 +27,7 @@ else:
   print 'Please run update.py (in src) to update the hiscores instead.'
 
 print 'Please wait... calling the updater.'
-print 'You can find the update log in update_log.txt.'
-print '  The log for the most recent update will be at the end of update_log.txt.'
+print 'The update log will be recorded in the most recent file in log/.'
 
 sleep(5) #Give user time to read this.
 
