@@ -1,6 +1,6 @@
-#! /usr/bin/python
+#! /usr/bin/env python
 
-## Copyright (c) 2014 Aging Miser
+## Copyright (c) 2016 Aging Miser
 
 ## This file is part of TFS HISCORES UPDATER.
 ##
@@ -18,68 +18,65 @@
 ##   along with TFS HISCORES UPDATER. If not, see http://www.gnu.org/licenses/.
 
 
-
-## CHANGE THIS LINE IF THE GDOC FOR THE HISCORES IS CHANGED
-gdoc_url_key = '0Arkz2dsnDdvVdG1DLWU4NDNwSndoS0FCb1hIekw1a2c'
-## CHANGE THIS LINE IF THE GDOC FOR THE HISCORES IS CHANGED
-
+import csv, locale, time, shutil, inspect
+import src.logger
+import lib.requests as requests
 
 
-runtime = 'yyyy-mm-dd-hh-mm-ss'
-f_out_log = ''
+logger = runtime = log = None # to be init'd by initialize()
 rsn_list = []
 rsn_dict = {}
 
-import csv, locale, time, shutil
-import lib.requests as requests
-## csv used to generate the .csv
-## locale used by dformat()
+
+def initialize():
+    """Initialize the globals."""
+    global logger, runtime, log
+    logger, runtime = src.logger.get_new_logger()
+    log = logger.log
 
 
-class Log:
+def terminate(err):
     """
-    Generates a timestamped log file in log/ and writes to it.
+    Terminate with sys.exit(1) and record it in the log as a fatal error.
     """
-
-    def __init__(self):
-        if runtime == 'yyyy-mm-dd-hh-mm-ss': 
-            set_runtime()
-
-        self.log_fname = open('log/update-log-%s.log' % runtime, 'w')
-
-    def write(self, text):
-        self.log_fname.write(unicode(text))
-        self.log_fname.write(u'\n')
-
-    def close(self):
-        self.log_fname.close()
+    log('FATAL ERROR ENCOUNTERED (details below)')
+    log(err)
+    sys.exit(err)
 
 
-def set_runtime():
+def set_gdoc_url_key(specified_gdoc_key):
     """
-    Generate string representing the current GMT time, yyyy-mm-dd-hh-mm-ss.
-    Writes said string to the $runtime global and returns it.
+    Set global $gdoc_url_key so every method knows what to request from.
     """
-    global runtime
-    if runtime != 'yyyy-mm-dd-hh-mm-ss': return runtime
-    runtime = '-'.join([str(elem).zfill(2) for elem in time.gmtime()[:6]])
-    return runtime
+    if specified_gdoc_key == None: 
+        terminate('received GDoc key "%s"' % specified_gdoc_key)
+
+    global gdoc_url_key
+    gdoc_url_key = specified_gdoc_key
+    log('Setting gdoc_url_key to %s' % gdoc_url_key)
+    return gdoc_url_key
 
 
 
-def request_memberlist(logger):
+def request_memberlist():
     """
     Requests the list of TFS members to update hiscores for, specifically from 
     the Google Sheet "TFS Hiscores - Data/db-memberlist".
 
     Parses list into $rsn_list global and returns it.
     """
-    logger.write('entering read_memberlist():')
+    log('Retrieving memberlist...')
     gdoc_url_base   = 'https://docs.google.com/spreadsheet/pub?output=csv&key='
     gdoc_url = gdoc_url_base + gdoc_url_key + '&output=csv#gid=62'
+    log('Attempting to retrieve memberlist from %s' % gdoc_url)
     gdoc_response = requests.get(gdoc_url)
     gdoc_contents = gdoc_response.content
+    
+    if gdoc_response.status_code != 200:
+        terminate('Received status code %d on memberlist retrieval.'
+                    % gdoc_response.status_code)
 
+    log('Memberlist successfully retrieved')
     global rsn_list ## Must include global declaration to modify it
     rsn_list = [rsn for rsn in gdoc_contents.splitlines() if len(rsn) > 0]
     ## Ignore blank entries; we know there is at least one because the first
@@ -89,27 +86,27 @@ def request_memberlist(logger):
     return rsn_list
 
 
-def request_hiscores_for(logger, rsn):
+def request_hiscores_for(rsn):
     """
     Downloads the lite hiscores for $rsn, calls the parser on the data, and
     finishes by writing to the $rsn_dict global.
     """
-    logger.write(' Requesting hiscores for %s using request_hiscores_for()' % rsn)
+    log('Requesting hiscores for %s' % rsn)
     hs_url = 'http://hiscore.runescape.com/index_lite.ws?player=%s' % rsn
     requested_data = requests.get(hs_url)
     
     ## if data request was successful
     if requested_data.status_code == 200:
         global rsn_dict
-        rsn_dict[rsn] = parse_received_content(logger, requested_data.content)
+        rsn_dict[rsn] = parse_hs_data(requested_data.content)
     
     ## otherwise report failure and the received response code
     else:
         f = (rsn, requested_data.status_code)
-        logger.write('     Excluding %s: %d response code on hs request' % f)
+        log('    Excluding %s: %d response code on hiscore retrieval' % f)
 
 
-def parse_received_content(logger, received_content):
+def parse_hs_data(received_content):
     """
     Returns a list containing the data appropriately ordered for the GSheet.
 
@@ -151,20 +148,20 @@ def parse_received_content(logger, received_content):
     return ordered
 
 
-def request_all_hiscores(logger):
+def request_all_hiscores():
     """
     Calls request_hiscores_for() for every name in the $rsn_list global
     """
     try: 
-        for rsn in rsn_list:    request_hiscores_for(logger, rsn)
+        for rsn in rsn_list:    request_hiscores_for(rsn)
     except requests.exceptions.RequestException as e:
-        logger.write('sth spontaneously combusted, but i have no idea what; all i know is:')
-        logger.write(e)
+        log('Something just went REALLY wrong; no idea what. Details below.')
+        terminate(e)
 
 
 ## writecsv(dict, .csv): dict, String -> None
 ## Writes contents of $hashtable to $out_csv as a .csv file.
-def write_csv(logger, hashtable, out_csv):
+def write_csv(hashtable, out_csv):
     update_writer = csv.writer( open(out_csv,'w'), 
                                 delimiter=',', 
                                 lineterminator='\n', 
@@ -173,7 +170,7 @@ def write_csv(logger, hashtable, out_csv):
     ## because running in Windows then automatically sets lineterminator to '\r\n'
     for key in hashtable : 
         row = [runtime, key, ''] + hashtable[key]
-        logger.write(row)
+        log('|'.join((repr(datum) for datum in row)))
         update_writer.writerow(row)
 
     ## In the old version, the update form automatically timestamped each update request
@@ -193,35 +190,42 @@ def dformat(num):
 
 
 ## archive() -> None
-## Logs updated-hiscores.csv in csv_archive/ for future reference.
-def archive(logger):
+## Archives updated-hiscores.csv in log/ for future reference.
+def archive():
     try :
-        shutil.copy('updated-hiscores.csv','csv_archive/hiscores_{timestamp}.csv'.format(timestamp=runtime))
+        shutil.copy('updated-hiscores.csv',
+                    'log/updated-hiscores_{timestamp}.csv'.format(
+                        timestamp=runtime)
+                    )
     except IOError as error: 
-        logger.write('IOError: could not archive %s (action:cp)' % error.filename)
+        log('IOError encountered; could not archive %s (action:cp)'
+                % error.filename)
  
 
 ## auto_update(): none -> none
 ## Calls everything in order.
-def auto_update():
-    logger = Log()
+def auto_update(gdoc_key=None):
+    initialize()
+    log('Beginning automatic update process')
 
-    logger.write('Initializing auto_update()')
+    log('Runtime was set to: %s' % logger.runtime)
 
-    logger.write('Setting runtime to: %s' % set_runtime())
-    logger.write('Calling request_memberlist() from auto_update()')
-    request_memberlist(logger)
+    log('Setting the GDoc URL key')
+    set_gdoc_url_key(gdoc_key)
 
-    logger.write('Calling request_all_hiscores() from auto_update()')
-    request_all_hiscores(logger) ## Download everything
+    log('Retrieving memberlist...')
+    request_memberlist()
 
-    logger.write('Calling write_csv() from auto_update()')
-    write_csv(logger, rsn_dict, 'updated-hiscores.csv')
+    log('Requesting and parsing hiscores for all members...')
+    request_all_hiscores() ## Download everything
 
-    logger.write('Calling archive() from auto_update()')
-    archive(logger)
+    log('Writing parsed hiscores to updated-hiscores.csv...')
+    write_csv(rsn_dict, 'updated-hiscores.csv')
 
-    logger.write('Exiting auto_update()')
+    log('Archiving updated-hiscores.csv for future reference.')
+    archive()
+
+    log('Finishing automatic update process.')
 
 
 if __name__ == '__main__':

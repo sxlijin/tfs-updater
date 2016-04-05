@@ -52,9 +52,9 @@ GDocs.
         import - which is where the dependency had been placed. The following
         sed statement was required to repair these dependencies:
             sed -i "s/^import six$/import lib.six as six/;
-                    s/^from six/from lib.six/;
+                    s/from six/from lib.six/;
                     s/^import chardet$/import lib.chardet as chardet/;
-                    s/^from urllib3/from lib.urllib3/
+                    s/from urllib3/from lib.urllib3/
                     " lib/*/*.py
 2014-09-01:v2.1 Reorganized file structure.
 2014-06-05:v2.0	Completely rewrote everything following Jagex's decision to 

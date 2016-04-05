@@ -89,7 +89,7 @@ if is_py2:
     import cookielib
     from Cookie import Morsel
     from StringIO import StringIO
-    from urllib3.packages.ordered_dict import OrderedDict
+    from lib.urllib3.packages.ordered_dict import OrderedDict
     from httplib import IncompleteRead
 
     builtin_str = str
