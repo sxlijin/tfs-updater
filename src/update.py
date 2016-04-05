@@ -24,6 +24,7 @@ import lib.requests as requests
 
 
 logger = runtime = log = None # to be init'd by initialize()
+CSV_OUT = 'UPLOAD ME TO TFS HISCORES (using Replace current sheet on db-main).csv'
 rsn_list = []
 rsn_dict = {}
 
@@ -162,6 +163,7 @@ def request_all_hiscores():
 ## writecsv(dict, .csv): dict, String -> None
 ## Writes contents of $hashtable to $out_csv as a .csv file.
 def write_csv(hashtable, out_csv):
+    log('Writing parsed data to %s' % out_csv)
     update_writer = csv.writer( open(out_csv,'w'), 
                                 delimiter=',', 
                                 lineterminator='\n', 
@@ -190,10 +192,10 @@ def dformat(num):
 
 
 ## archive() -> None
-## Archives updated-hiscores.csv in log/ for future reference.
+## Archives csv in log/ for future reference.
 def archive():
     try :
-        shutil.copy('updated-hiscores.csv',
+        shutil.copy(CSV_OUT,
                     'log/updated-hiscores_{timestamp}.csv'.format(
                         timestamp=runtime)
                     )
@@ -219,8 +221,8 @@ def auto_update(gdoc_key=None):
     log('Requesting and parsing hiscores for all members...')
     request_all_hiscores() ## Download everything
 
-    log('Writing parsed hiscores to updated-hiscores.csv...')
-    write_csv(rsn_dict, 'updated-hiscores.csv')
+    log('Writing parsed hiscores to csv...')
+    write_csv(rsn_dict, CSV_OUT)
 
     log('Archiving updated-hiscores.csv for future reference.')
     archive()

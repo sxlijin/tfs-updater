@@ -29,6 +29,7 @@ class Log:
         self.runtime = get_current_time()
         self.log_fname = 'log/update-log_{timestamp}.log'.format(
                             timestamp=self.runtime)
+        open(self.log_fname, 'w').close()
         self.log('Runtime set to %s' % self.runtime)
         self.log('Setting log file to %s' % self.log_fname)
 
